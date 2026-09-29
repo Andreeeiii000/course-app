@@ -7,4 +7,4 @@
 - Пройдена проверка типов (strict: true) и сборка (npm run build)
 - Репозиторий опубликован на GitHub
 
-Коммит: ff9984d Lab 1: create React TypeScript app
+Коммит: fd05475 Lab 1: create React TypeScript app
