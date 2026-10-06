@@ -1,0 +1,58 @@
+import type { Task } from '../types/task'
+
+export const tasks: Task[] = [
+  {
+    id: 't1',
+    title: 'Подготовить план проекта',
+    description: 'Описать основной сценарий приложения и список страниц.',
+    status: 'todo',
+    dueDate: '2026-10-01',
+    priority: 'high',
+    tag: 'Учёба',
+  },
+  {
+    id: 't2',
+    title: 'Выполнить лабораторную работу по React',
+    description: 'Собрать список задач, карточку и маршруты в React Router.',
+    status: 'in_progress',
+    dueDate: '2026-10-05',
+    priority: 'high',
+    tag: 'Учёба',
+  },
+  {
+    id: 't3',
+    title: 'Подготовить конспект по TypeScript',
+    description: 'Выписать основные типы, объединения и правила strict-режима.',
+    status: 'done',
+    dueDate: '2026-09-28',
+    priority: 'medium',
+    tag: 'Учёба',
+  },
+  {
+    id: 't4',
+    title: 'Купить канцелярию для семинаров',
+    description: 'Блокнот, маркеры и стикеры для заметок на занятиях.',
+    status: 'todo',
+    dueDate: '2026-10-08',
+    priority: 'low',
+    tag: 'Быт',
+  },
+  {
+    id: 't5',
+    title: 'Записаться на консультацию к преподавателю',
+    description: 'Уточнить тему курсового проекта и согласовать сроки.',
+    status: 'in_progress',
+    dueDate: '2026-10-03',
+    priority: 'medium',
+    tag: 'Проект',
+  },
+  {
+    id: 't6',
+    title: 'Сделать резервную копию репозитория',
+    description: 'Проверить, что все коммиты отправлены на сервер.',
+    status: 'done',
+    dueDate: '2026-09-30',
+    priority: 'low',
+    tag: 'Проект',
+  },
+]
