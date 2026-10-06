@@ -21,4 +21,4 @@
 `/tasks/missing`; обновить страницу на `/tasks/t1`; проверить «назад»/«вперёд»,
 ширину 360 px и переходы клавишей Tab; в Network при кликах по ссылкам нет загрузки HTML.
 
-Коммит: _указать хэш после `git commit`_ (Lab 2: add pages and navigation)
+Коммит: fda4183 Lab 2: App pages and navigation
