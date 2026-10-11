@@ -43,4 +43,4 @@
 9. обновить страницу — демонстрационный набор вернулся.
 Дополнительно: отправка по Enter, ширина 360 px, консоль без ошибок; `npm run build` и `npm run preview`.
 
-Коммит: Lab 3: add local forms and CRUD
+Коммит: b9d4fbd Lab 3: add local forms and CRUD
