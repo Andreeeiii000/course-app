@@ -65,3 +65,69 @@ section h1 { overflow-wrap: anywhere; }
 @media (min-width: 760px) {
   .task-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.memory-note {
+  margin: 16px 0 0;
+  padding: 8px 12px;
+  border: 1px solid #fde047;
+  border-radius: 6px;
+  background: #fefce8;
+  font-size: 0.9rem;
+}
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 16px;
+}
+
+.task-form {
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+}
+.task-form label { font-weight: bold; margin-top: 8px; }
+.task-form input,
+.task-form select,
+.task-form textarea {
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+  border: 1px solid #9ca3af;
+  border-radius: 4px;
+}
+.task-form input:focus-visible,
+.task-form select:focus-visible,
+.task-form textarea:focus-visible,
+button:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+.form-error {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  color: #7f1d1d;
+  background: #fee2e2;
+  border: 1px solid #f87171;
+  border-radius: 4px;
+}
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+button {
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid #1d4ed8;
+  border-radius: 4px;
+  background: #fff;
+  color: #1d4ed8;
+}
+button[type='submit'] { background: #1d4ed8; color: #fff; }
+button.danger { border-color: #b91c1c; color: #b91c1c; }

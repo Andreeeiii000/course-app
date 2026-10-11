@@ -11,6 +11,11 @@ export function AppLayout() {
           <NavLink to="/tasks/new">Создать</NavLink>
         </nav>
       </header>
+      <p className="memory-note" role="note">
+        Данные хранятся только в памяти открытого приложения: изменения
+        временные и пропадут после обновления страницы — вернутся
+        демонстрационные задачи.
+      </p>
       <main>
         <Outlet />
       </main>

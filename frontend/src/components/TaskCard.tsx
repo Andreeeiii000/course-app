@@ -10,7 +10,7 @@ export function TaskCard({ task }: TaskCardProps) {
       <h2>
         <Link to={`/tasks/${task.id}`}>{task.title}</Link>
       </h2>
-      <p>{task.description}</p>
+      {task.description && <p>{task.description}</p>}
       <p>Срок: {task.dueDate}</p>
       <p className="task-meta">
         <span className={`badge status-${task.status}`}>
