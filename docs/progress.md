@@ -66,4 +66,4 @@
 9. Регрессия: полный CRUD, «Отмена» (смена тега в черновике не меняет запись), удаление с подтверждением, фильтр по статусу, `/unknown`, `/tasks/missing`.
 10. Сборка: `npm run build`, `npm run preview` — `/demo/tags.json` открывается в preview, создание и редактирование с выбором тега работают.
 
-Коммит: Lab 4: load reference data over HTTP
+Коммит: 4977eb6 Lab 4: load reference data over HTTP
