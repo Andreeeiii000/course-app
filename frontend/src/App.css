@@ -131,3 +131,23 @@ button {
 }
 button[type='submit'] { background: #1d4ed8; color: #fff; }
 button.danger { border-color: #b91c1c; color: #b91c1c; }
+
+.form-note {
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  background: #eff6ff;
+  font-size: 0.9rem;
+}
+.form-note p { margin: 0 0 8px; }
+.form-note > p:last-child { margin-bottom: 0; }
+.form-note-error {
+  color: #7f1d1d;
+  background: #fee2e2;
+  border-color: #f87171;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

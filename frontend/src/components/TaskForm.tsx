@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { TaskDraft } from '../types/task'
+import { useTags } from '../hooks/useTags'
 import {
   isTaskPriority,
   isTaskStatus,
@@ -37,9 +38,18 @@ export function TaskForm(props: TaskFormProps) {
   // Черновик — копия начальных значений; общий список он не меняет.
   const [draft, setDraft] = useState<TaskDraft>(() => ({ ...props.initialValues }))
   const [error, setError] = useState('')
+  // Справочник: своё состояние загрузки, отдельное от черновика формы.
+  const { load, retry } = useTags()
+  const tags = load.status === 'success' ? load.data : []
+  const selectedTagExists = tags.some((tag) => tag.id === draft.tag)
+  const canSave = load.status === 'success' && selectedTagExists
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canSave) {
+      setError('Дождитесь справочника и выберите доступный тег.')
+      return
+    }
     const message = validateDraft(draft)
     if (message) {
       setError(message)
@@ -114,12 +124,57 @@ export function TaskForm(props: TaskFormProps) {
         ))}
       </select>
 
-      <label htmlFor="task-tag">Тег</label>
-      <input
+      <label htmlFor="task-tag">Тег *</label>
+      <select
         id="task-tag"
         value={draft.tag}
-        onChange={(e) => setDraft({ ...draft, tag: e.target.value })}
-      />
+        required
+        disabled={load.status !== 'success' || tags.length === 0}
+        onChange={(event) => setDraft({ ...draft, tag: event.target.value })}
+      >
+        <option value="">Выберите тег</option>
+        {draft.tag !== '' && !selectedTagExists && (
+          <option value={draft.tag} disabled>
+            Текущий код: {draft.tag} — выберите доступный тег
+          </option>
+        )}
+        {tags.map((tag) => (
+          <option key={tag.id} value={tag.id}>
+            {tag.name}
+          </option>
+        ))}
+      </select>
+
+      {load.status === 'loading' && (
+        <p role="status" className="form-note">
+          Загружаем теги…
+        </p>
+      )}
+      {load.status === 'error' && (
+        <div className="form-note form-note-error">
+          <p role="alert">{load.message}</p>
+          <button type="button" onClick={retry}>
+            Повторить
+          </button>
+        </div>
+      )}
+      {load.status === 'success' && tags.length === 0 && (
+        <div className="form-note">
+          <p role="status">Тегов пока нет. Сохранение недоступно.</p>
+          <button type="button" onClick={retry}>
+            Повторить
+          </button>
+        </div>
+      )}
+      {load.status === 'success' &&
+        tags.length > 0 &&
+        draft.tag !== '' &&
+        !selectedTagExists && (
+          <p role="status" className="form-note">
+            Тег «{draft.tag}» не найден в справочнике. Выберите доступный
+            вариант из списка.
+          </p>
+        )}
 
       {error && (
         <p role="alert" className="form-error">
@@ -128,7 +183,9 @@ export function TaskForm(props: TaskFormProps) {
       )}
 
       <div className="form-actions">
-        <button type="submit">Сохранить</button>
+        <button type="submit" disabled={!canSave}>
+          Сохранить
+        </button>
         <button type="button" onClick={props.onCancel}>
           Отмена
         </button>

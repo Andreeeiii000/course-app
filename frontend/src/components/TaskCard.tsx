@@ -19,6 +19,7 @@ export function TaskCard({ task }: TaskCardProps) {
         <span className={`badge priority-${task.priority}`}>
           Приоритет: {priorityLabels[task.priority]}
         </span>
+        {task.tag && <span className="badge">Тег: {task.tag}</span>}
       </p>
     </article>
   )

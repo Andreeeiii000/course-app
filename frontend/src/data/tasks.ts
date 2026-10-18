@@ -8,7 +8,7 @@ export const tasks: Task[] = [
     status: 'todo',
     dueDate: '2026-10-01',
     priority: 'high',
-    tag: 'Учёба',
+    tag: 'study',
   },
   {
     id: 't2',
@@ -17,7 +17,7 @@ export const tasks: Task[] = [
     status: 'in_progress',
     dueDate: '2026-10-05',
     priority: 'high',
-    tag: 'Учёба',
+    tag: 'study',
   },
   {
     id: 't3',
@@ -26,7 +26,7 @@ export const tasks: Task[] = [
     status: 'done',
     dueDate: '2026-09-28',
     priority: 'medium',
-    tag: 'Учёба',
+    tag: 'study',
   },
   {
     id: 't4',
@@ -35,7 +35,7 @@ export const tasks: Task[] = [
     status: 'todo',
     dueDate: '2026-10-08',
     priority: 'low',
-    tag: 'Быт',
+    tag: 'home',
   },
   {
     id: 't5',
@@ -44,7 +44,7 @@ export const tasks: Task[] = [
     status: 'in_progress',
     dueDate: '2026-10-03',
     priority: 'medium',
-    tag: 'Проект',
+    tag: 'work',
   },
   {
     id: 't6',
@@ -53,6 +53,6 @@ export const tasks: Task[] = [
     status: 'done',
     dueDate: '2026-09-30',
     priority: 'low',
-    tag: 'Проект',
+    tag: 'work',
   },
 ]
