@@ -89,7 +89,7 @@
   - в миграцию добавлены CHECK `tasks_done_requires_description` и индексы по внешним ключам;
   - в кнопке «Повторить» пустого состояния нет: оно обновляется кнопкой «Обновить справочник».
 
-Порядок применения (SQL Editor, один раз): 1) файл миграции целиком; 2) `seed.sql`. Фактически применено: _указать дату и время_.
+Порядок применения (SQL Editor, один раз): 1) файл миграции целиком; 2) `seed.sql`. Фактически применено: 02.11.2026, 18:45.
 
 Проверка (по одному запросу в SQL Editor; ошибка ограничения — ожидаемый результат):
 1. Table Editor: `tags` — 5 строк, `tasks` — пусто; типы столбцов, PK и FK соответствуют схеме.
@@ -133,4 +133,4 @@ console.log(w.error?.code, w.error?.message, r.error?.code, r.error?.message)
 13. Сборка: `npm run build`, `npm run preview` — форма читает справочник из Supabase, в Network нет `/demo/tags.json`.
 14. Репозиторий: `git status` показывает миграцию, seed, `lib/supabase.ts`, сервис, `package.json`, lock-файл и `.env.example`, но не `.env.local`; в чистой копии `npm ci` и `npm run build` проходят после создания `.env.local`.
 
-Коммит: _указать хэш_ Lab 5: add Supabase schema and reference data
+Коммит: 82e10ba Lab 5: add Supabase schema and reference data
