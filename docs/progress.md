@@ -67,3 +67,70 @@
 10. Сборка: `npm run build`, `npm run preview` — `/demo/tags.json` открывается в preview, создание и редактирование с выбором тега работают.
 
 Коммит: 4977eb6 Lab 4: load reference data over HTTP
+
+## ЛР 5 — Схема данных и справочник в Supabase
+- Создан учебный проект Supabase; схема описана SQL-файлами в репозитории: `supabase/migrations/202610242011_initial_schema.sql` (таблицы, ограничения, RLS, права, политика) и `supabase/seed.sql` (справочные данные)
+- Схема (тема Task Tracker):
+
+| Таблица | Назначение | Ключ | Связь | Данные |
+|---|---|---|---|---|
+| `tags` | справочник тегов | `id` (text) | — | публичные, только чтение |
+| `tasks` | задачи пользователя | `id` (uuid) | `tag_id` → `tags.id` (restrict), `owner_id` → `auth.users.id` (cascade) | личные, закрыты от клиента до ЛР 6 |
+
+- Ограничения: `tags` — `id`/`name` не пустые и без пробелов по краям, `name` уникально; `tasks` — название 3–100 символов, допустимые `status` и `priority`, у `done` непустое описание (правило формы ЛР 3), даты `date`, `created_at` `timestamptz`. Индексы по `owner_id` и `tag_id`
+- Доступ: RLS включён на обеих таблицах; `revoke all` у `anon` и `authenticated`; `grant select` и политика `using (true)` только у `tags`; у `tasks` нет ни прав, ни политик
+- Seed: те же `id`, что в JSON ЛР 4 (`study`, `work`, `home`, `health`, `personal`), UPSERT — повторное применение безопасно
+- Установлен `@supabase/supabase-js`; `lib/supabase.ts` создаёт один клиент из `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY`; `.env.local` в `.gitignore`, `.env.example` с заглушками в репозитории
+- `services/tags.ts`: `getTags` читает `tags` (`select('id, name')`, `order('name')`, `abortSignal`), проверяет `error` до передачи данных, `parseTags` сохранён; `tagsUrl` и `fetch` удалены, `public/demo/tags.json` удалён, скрытого резервного массива нет
+- `TaskForm`: добавлена кнопка «Обновить справочник» (`type="button"`, недоступна во время загрузки, не отправляет форму); основные записи, маршруты, фильтр, отмена и удаление из ЛР 3–4 не менялись; задачи по-прежнему только в состоянии `App`
+- Отклонения от методички:
+  - `lib/supabase.ts` не бросает исключение при загрузке модуля, а экспортирует `supabase = null` и `supabaseConfigError`: исключение при импорте оставило бы пустую страницу, а методичка требует «сообщить об ошибке настройки». `getTags` выбрасывает эту ошибку, она видна в форме, список задач при этом работает;
+  - `useTags` хранит `previous` (последний успешный справочник) в состоянии `loading`: при обновлении список тегов не исчезает, выбранный тег остаётся виден;
+  - в миграцию добавлены CHECK `tasks_done_requires_description` и индексы по внешним ключам;
+  - в кнопке «Повторить» пустого состояния нет: оно обновляется кнопкой «Обновить справочник».
+
+Порядок применения (SQL Editor, один раз): 1) файл миграции целиком; 2) `seed.sql`. Фактически применено: _указать дату и время_.
+
+Проверка (по одному запросу в SQL Editor; ошибка ограничения — ожидаемый результат):
+1. Table Editor: `tags` — 5 строк, `tasks` — пусто; типы столбцов, PK и FK соответствуют схеме.
+2. Справочник и ограничения:
+```sql
+select id, name from public.tags order by name;
+insert into public.tags (id, name) values ('', 'Пусто');          -- tags_id_not_blank
+insert into public.tags (id, name) values ('x1', '');             -- tags_name_not_blank
+insert into public.tags (id, name) values ('study', 'Дубль');    -- PK, 23505
+insert into public.tags (id, name) values ('y1', 'Учёба');       -- unique name, 23505
+```
+3. Внешний ключ: запрос из методички (случайный `owner_id`) завершается ошибкой FK; `tag_id` проверяется в ЛР 6 с реальным пользователем. Строки в `auth.users` вручную не создаются.
+4. Права и RLS (ожидается `true, false, false, false, false, false` и `true / true` в `rowsecurity`):
+```sql
+select
+  has_table_privilege('anon', 'public.tags', 'select')           as anon_select_tags,
+  has_table_privilege('anon', 'public.tags', 'insert')           as anon_insert_tags,
+  has_table_privilege('authenticated', 'public.tags', 'update')  as auth_update_tags,
+  has_table_privilege('authenticated', 'public.tags', 'delete')  as auth_delete_tags,
+  has_table_privilege('anon', 'public.tasks', 'select')          as anon_select_tasks,
+  has_table_privilege('authenticated', 'public.tasks', 'insert') as auth_insert_tasks;
+select tablename, rowsecurity from pg_tables
+where schemaname = 'public' and tablename in ('tags', 'tasks');
+select tablename, policyname, cmd, roles from pg_policies where schemaname = 'public';
+```
+Политика ровно одна: `tags are publicly readable`, `SELECT`, роли `anon` и `authenticated`.
+5. Чтение: `cd frontend && npm ci && npm run dev`, DevTools → Network, фильтр `rest/v1/tags`. Открыть `/tasks/new` — один `GET` к домену проекта Supabase (200, Initiator — `services/tags.ts`), в Response пять строк. Выбрать тег, создать задачу, открыть «Редактировать» — на странице задачи виден `id` (`study`), в форме — `name` («Учёба»).
+6. Ошибка и повтор: временно заменить `'tags'` в `getTags` на `'tagz'` — в форме сообщение об ошибке Supabase и «Повторить»; ввести название и описание, вернуть правильное имя таблицы, нажать «Повторить» — поля на месте.
+7. Пустой результат: в SQL Editor `delete from public.tags;` — задач в БД нет, удаление допустимо. «Обновить справочник» — «Тегов пока нет. Сохранение недоступно.», `select` и «Сохранить» недоступны. Выполнить `seed.sql`, нажать «Обновить справочник» без перезагрузки — теги вернулись, черновик не потерян.
+8. Изменение `name` при прежнем `id`: `update public.tags set name = 'Учебные задачи' where id = 'study';` — после «Обновить справочник» в форме новое название, выбранный тег и введённые поля прежние. Затем вернуть `'Учёба'` (или обновить `seed.sql`, чтобы БД и репозиторий совпадали).
+9. Запрет записи из браузера: временно добавить в эффект любого компонента
+```ts
+const w = await supabase!.from('tags').insert({ id: 'hack', name: 'Не должно сохраниться' })
+const r = await supabase!.from('tasks').select('id')
+console.log(w.error?.code, w.error?.message, r.error?.code, r.error?.message)
+```
+Ожидается `42501 permission denied for table tags` и `42501 permission denied for table tasks`; в `tags` новой строки нет. Проверочный код удалить до коммита; разрешающие политики не добавлять.
+10. Конфигурация: переименовать `.env.local`, перезапустить Vite — список задач работает, форма показывает «Не настроены переменные Supabase в .env.local», сетевых запросов к API нет; вернуть файл и перезапустить Vite.
+11. Устаревший ответ: на Slow 3G открыть форму и сразу перейти к списку — в консоли нет ошибок, запрос отменён.
+12. Регрессия: полный CRUD, «Отмена», удаление с подтверждением, фильтр по статусу, `/unknown`, `/tasks/missing`; после обновления страницы вернулись 6 демонстрационных задач (основные записи пока локальны).
+13. Сборка: `npm run build`, `npm run preview` — форма читает справочник из Supabase, в Network нет `/demo/tags.json`.
+14. Репозиторий: `git status` показывает миграцию, seed, `lib/supabase.ts`, сервис, `package.json`, lock-файл и `.env.example`, но не `.env.local`; в чистой копии `npm ci` и `npm run build` проходят после создания `.env.local`.
+
+Коммит: _указать хэш_ Lab 5: add Supabase schema and reference data

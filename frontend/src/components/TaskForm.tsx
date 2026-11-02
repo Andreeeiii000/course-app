@@ -40,7 +40,12 @@ export function TaskForm(props: TaskFormProps) {
   const [error, setError] = useState('')
   // Справочник: своё состояние загрузки, отдельное от черновика формы.
   const { load, retry } = useTags()
-  const tags = load.status === 'success' ? load.data : []
+  // Во время обновления показываем предыдущий список, чтобы выбранный тег
+  // не пропадал из select; сохранение при этом недоступно (см. canSave).
+  const tags =
+    load.status === 'success' ? load.data
+    : load.status === 'loading' ? load.previous
+    : []
   const selectedTagExists = tags.some((tag) => tag.id === draft.tag)
   const canSave = load.status === 'success' && selectedTagExists
 
@@ -159,12 +164,9 @@ export function TaskForm(props: TaskFormProps) {
         </div>
       )}
       {load.status === 'success' && tags.length === 0 && (
-        <div className="form-note">
-          <p role="status">Тегов пока нет. Сохранение недоступно.</p>
-          <button type="button" onClick={retry}>
-            Повторить
-          </button>
-        </div>
+        <p role="status" className="form-note">
+          Тегов пока нет. Сохранение недоступно.
+        </p>
       )}
       {load.status === 'success' &&
         tags.length > 0 &&
@@ -175,6 +177,17 @@ export function TaskForm(props: TaskFormProps) {
             вариант из списка.
           </p>
         )}
+
+      {load.status !== 'error' && (
+        <button
+          type="button"
+          className="refresh-tags"
+          onClick={retry}
+          disabled={load.status === 'loading'}
+        >
+          Обновить справочник
+        </button>
+      )}
 
       {error && (
         <p role="alert" className="form-error">

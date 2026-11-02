@@ -151,3 +151,4 @@ button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
+.refresh-tags { justify-self: start; margin-top: 4px; }
