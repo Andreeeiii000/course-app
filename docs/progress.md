@@ -134,3 +134,83 @@ console.log(w.error?.code, w.error?.message, r.error?.code, r.error?.message)
 14. Репозиторий: `git status` показывает миграцию, seed, `lib/supabase.ts`, сервис, `package.json`, lock-файл и `.env.example`, но не `.env.local`; в чистой копии `npm ci` и `npm run build` проходят после создания `.env.local`.
 
 Коммит: 82e10ba Lab 5: add Supabase schema and reference data
+
+## ЛР 6 — Авторизация и сохранение личных записей
+- Подготовка (Шаг 1): состояние ЛР 5 зафиксировано коммитами `82e10ba` и `cb5de29`; `frontend/.env.local` исключён из Git правилом `*.local` (`git check-ignore -v frontend/.env.local`), `.env.example` содержит только имена `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY`
+- Настройки Auth (Шаг 1; заполнить по Dashboard → Authentication):
+
+| Параметр | Значение |
+|---|---|
+| Вход по email и паролю | разрешён |
+| Подтверждение email | <включено |
+| Site URL | `http://localhost:5173` |
+| Redirect URLs (локально) | `http://localhost:5173` |
+
+  Пароли проверочных аккаунтов в Git и Moodle не записываются.
+- Миграция `supabase/migrations/202611151200_tasks_owner_policies.sql` (ЛР 5 не изменялась): `owner_id` по умолчанию `auth.uid()`; `revoke all` у `anon` и `authenticated`, затем `grant select, insert, update, delete` только `authenticated`; четыре отдельные политики владельца (`tasks select own`, `tasks insert own`, `tasks update own`, `tasks delete own`); справочник `tags` и его публичный `SELECT` не затронуты
+- Модель доступа: **`tags` читают все; `tasks` читает и изменяет только владелец** (SQL и описание совпадают, подробности — в README, раздел «Модель доступа»)
+- `hooks/useAuth.ts`: состояния `checking` / `guest` / `authenticated`, `onAuthStateChange` (синхронный callback) и `getSession`, поздний начальный ответ не перезаписывает событие, `subscription.unsubscribe()` в cleanup
+- `pages/AuthPage.tsx`: режимы «Вход» и «Регистрация», поля `email`, `password`, `pending`, `error`, `message`; `type="email"`, `autoComplete` `email` / `current-password` / `new-password`; `signUp` с `emailRedirectTo: window.location.origin`, при `data.session === null` — инструкция «Проверьте почту…»; `signInWithPassword`; кнопки блокируются на время запроса; email при ошибке не очищается; пароль не логируется
+- `app/RequireAuth.tsx` (`Outlet`, статус при `checking`, `Navigate` на `/auth` для гостя), `/auth` публичный, вошедшего перенаправляет на `/tasks`; `AppLayout` показывает email и «Выйти» (`signOut({ scope: 'local' })`); обработка неизвестного адреса сохранена
+- `services/tasks.ts`: `TaskRow`, `fromRow`, `toWrite` (без `id`, `owner_id`, `created_at`), `getTasks`, `createTask`, `updateTask`, `deleteTask`; `overrideTypes` для ответов
+- `hooks/useTasks.ts`: список зависит от `session.user.id`; гость — запросов нет; при выходе и смене пользователя прежний список очищается до нового запроса; устаревшие ответы игнорируются; `reload` («Повторить») и `refresh` (после create/update/delete)
+- `App.tsx`: `initialTasks` и `data/tasks.ts` удалены, обработчики асинхронные (`onCreate: Promise<string>`, `onUpdate` и `onDelete`: `Promise<void>`); `TaskForm` ожидает асинхронный `onSave`, добавлены `pending` и `submitError`; предметная валидация ЛР 3 и проверка справочника выполняются до запроса, «Отмена» ничего не отправляет, подтверждение удаления осталось перед `deleteTask`
+- Удалено сообщение «данные хранятся только в памяти» из layout и стиль `.memory-note`
+- Отклонения от методички:
+  - имя миграции `202611151200_…` вместо `202609220001_…`: метка времени должна быть больше, чем у `202610242011_initial_schema.sql`, иначе порядок применения по имени файла нарушается;
+  - импорты из `react-router` (как в проекте с ЛР 2), а не из `react-router-dom`;
+  - `supabase` может быть `null` (решение ЛР 5): `useAuth` тогда даёт `guest`, `AuthPage` показывает ошибку настройки, сервисы используют `requireSupabase()`;
+  - `updateTask` и `deleteTask` запрашивают `select('id')` и считают ноль затронутых строк ошибкой «Задача не найдена или недоступна» — одинаково для отсутствующей и для чужой строки;
+  - ошибка перезагрузки списка после успешной записи показывается в списке с «Повторить», а не в форме — иначе возможен дубль при повторной отправке;
+  - страницы `TaskDetailsPage` и `EditTaskPage` получают состояние загрузки (`TasksGate`): при ошибке загрузки показывается ошибка с повтором, а не «Задача не найдена».
+
+Порядок применения новой миграции (SQL Editor, один раз, после ЛР 5): файл `202611151200_tasks_owner_policies.sql` целиком. Фактически применено: 17.11.2026, 9:45.
+
+Проверка (по одному запросу в SQL Editor):
+1. Права и RLS (ожидается `false, false, true, true, true, true, true, false` и `true / true` в `rowsecurity`):
+```sql
+select
+  has_table_privilege('anon', 'public.tasks', 'select')          as anon_select_tasks,
+  has_table_privilege('anon', 'public.tasks', 'insert')          as anon_insert_tasks,
+  has_table_privilege('authenticated', 'public.tasks', 'select') as auth_select_tasks,
+  has_table_privilege('authenticated', 'public.tasks', 'insert') as auth_insert_tasks,
+  has_table_privilege('authenticated', 'public.tasks', 'update') as auth_update_tasks,
+  has_table_privilege('authenticated', 'public.tasks', 'delete') as auth_delete_tasks,
+  has_table_privilege('anon', 'public.tags', 'select')           as anon_select_tags,
+  has_table_privilege('authenticated', 'public.tags', 'update')  as auth_update_tags;
+select tablename, rowsecurity from pg_tables
+where schemaname = 'public' and tablename in ('tags', 'tasks');
+```
+2. Политики — пять: `tags are publicly readable` (`SELECT`, `anon` и `authenticated`) и четыре на `tasks` (`SELECT`, `INSERT`, `UPDATE`, `DELETE`, роль `authenticated`):
+```sql
+select tablename, policyname, cmd, roles from pg_policies
+where schemaname = 'public' order by tablename, cmd;
+select column_default from information_schema.columns
+where table_schema = 'public' and table_name = 'tasks' and column_name = 'owner_id'; -- auth.uid()
+```
+3. До создания пользователей `tasks` пуста; строки и пользователи через SQL не добавляются.
+4. Сборка: `cd frontend && npm ci && npm run build && npm run preview`.
+5. Гость: открыть `/tasks`, `/tasks/new`, `/tasks/<любой id>` — перенаправление на `/auth`; обновить страницу на личном адресе — на мгновение виден только статус «Проверяем сессию…», данных нет.
+6. Регистрация: слабый пароль — ошибка и email сохранён; при включённом подтверждении после регистрации сессии нет, показана инструкция; вход до подтверждения — понятная ошибка; неверный пароль — ошибка, email на месте.
+7. Два аккаунта (A и B, пароли не записываются):
+   1. A: создать две записи, обновить страницу, изменить одну, записать `id`; «Отмена» в форме не меняет запись;
+   2. выйти — список очищается, `/tasks/:id` ведёт на `/auth`; войти снова — записи на месте;
+   3. B: список A не виден; создать запись, обновить страницу; открыть `/tasks/<id A>` — «Задача не найдена»;
+   4. временно, под сессией B (подставить `A_ID` из Dashboard → Authentication → Users и `A_TASK_ID`):
+```ts
+const sel = await supabase!.from('tasks').select('id').eq('owner_id', A_ID)
+const upd = await supabase!.from('tasks').update({ title: 'Проверка' }).eq('id', A_TASK_ID).select('id')
+const del = await supabase!.from('tasks').delete().eq('id', A_TASK_ID).select('id')
+const ins = await supabase!.from('tasks').insert({
+  owner_id: A_ID, tag_id: 'study', title: 'Подмена владельца',
+  status: 'todo', due_date: '2026-12-01', priority: 'low',
+})
+console.log(sel.data, upd.data, upd.error, del.data, del.error, ins.error?.code, ins.error?.message)
+```
+   Ожидается: `[]`, `[]` и `null`, `[]` и `null`, `42501` и сообщение о нарушении политики строк. Проверочный код удалить до коммита; secret key и `service_role` не использовать;
+   5. A: записи не изменены, запись B не видна; в Dashboard (Table Editor) строки обоих пользователей видны — это роль администратора и браузерным доступом не считается.
+8. Ошибки: выключить сеть при загрузке списка — сообщение и «Повторить»; при сохранении — сообщение, черновик (название, описание) на месте, после возврата сети повторная отправка проходит; быстро дважды нажать «Сохранить» — одна запись; во время запроса кнопки «Сохранить», «Отмена» и «Удалить» недоступны.
+9. Регрессия: создание, редактирование, отмена, удаление с подтверждением, фильтр по статусу, выбор тега из справочника (читается и без входа), `/unknown`; демонстрационных задач ЛР 2 нет, список нового аккаунта пуст.
+10. Репозиторий: `git status` показывает миграцию, `hooks`, `services`, страницы, `README.md` и `docs/progress.md`, но не `.env.local`; в чистой копии `npm ci` и `npm run build` проходят после создания `.env.local`.
+
+Коммит: <хеш> Lab 6: add auth and persistent personal records

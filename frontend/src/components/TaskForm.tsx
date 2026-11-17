@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { TaskDraft } from '../types/task'
 import { useTags } from '../hooks/useTags'
@@ -13,7 +13,9 @@ import {
 
 type TaskFormProps = {
   initialValues: TaskDraft
-  onSave: (draft: TaskDraft) => void
+  // Асинхронное сохранение: отклонённый Promise означает ошибку, форма
+  // показывает её и сохраняет введённые значения.
+  onSave: (draft: TaskDraft) => Promise<void>
   onCancel: () => void
 }
 
@@ -38,6 +40,11 @@ export function TaskForm(props: TaskFormProps) {
   // Черновик — копия начальных значений; общий список он не меняет.
   const [draft, setDraft] = useState<TaskDraft>(() => ({ ...props.initialValues }))
   const [error, setError] = useState('')
+  // Состояние запроса: pending блокирует кнопки, submitError — ошибка сохранения.
+  const [pending, setPending] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  // Защита от повторной отправки до перерисовки (двойной клик, Enter).
+  const submittingRef = useRef(false)
   // Справочник: своё состояние загрузки, отдельное от черновика формы.
   const { load, retry } = useTags()
   // Во время обновления показываем предыдущий список, чтобы выбранный тег
@@ -49,8 +56,9 @@ export function TaskForm(props: TaskFormProps) {
   const selectedTagExists = tags.some((tag) => tag.id === draft.tag)
   const canSave = load.status === 'success' && selectedTagExists
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submittingRef.current) return
     if (!canSave) {
       setError('Дождитесь справочника и выберите доступный тег.')
       return
@@ -61,12 +69,25 @@ export function TaskForm(props: TaskFormProps) {
       return // введённые поля остаются в draft
     }
     setError('')
-    props.onSave({
-      ...draft,
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      tag: draft.tag.trim(),
-    })
+    setSubmitError('')
+    submittingRef.current = true
+    setPending(true)
+    try {
+      await props.onSave({
+        ...draft,
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        tag: draft.tag.trim(),
+      })
+    } catch (caught: unknown) {
+      // Черновик не очищается: пользователь может повторить отправку.
+      setSubmitError(
+        caught instanceof Error ? caught.message : 'Не удалось сохранить запись.'
+      )
+    } finally {
+      submittingRef.current = false
+      setPending(false)
+    }
   }
 
   return (
@@ -194,12 +215,17 @@ export function TaskForm(props: TaskFormProps) {
           {error}
         </p>
       )}
+      {submitError && (
+        <p role="alert" className="form-error">
+          {submitError}
+        </p>
+      )}
 
       <div className="form-actions">
-        <button type="submit" disabled={!canSave}>
-          Сохранить
+        <button type="submit" disabled={!canSave || pending}>
+          {pending ? 'Сохраняем…' : 'Сохранить'}
         </button>
-        <button type="button" onClick={props.onCancel}>
+        <button type="button" onClick={props.onCancel} disabled={pending}>
           Отмена
         </button>
       </div>

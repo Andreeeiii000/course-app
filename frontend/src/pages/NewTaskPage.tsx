@@ -3,7 +3,8 @@ import { TaskForm } from '../components/TaskForm'
 import type { TaskDraft } from '../types/task'
 
 type NewTaskPageProps = {
-  onCreate: (draft: TaskDraft) => string
+  // Сохраняет задачу в Supabase и возвращает id созданной строки.
+  onCreate: (draft: TaskDraft) => Promise<string>
 }
 
 const emptyTask: TaskDraft = {
@@ -18,8 +19,10 @@ const emptyTask: TaskDraft = {
 export function NewTaskPage({ onCreate }: NewTaskPageProps) {
   const navigate = useNavigate()
 
-  function handleSave(draft: TaskDraft) {
-    const id = onCreate(draft)
+  // Ошибка onCreate доходит до TaskForm: страница остаётся открытой,
+  // введённые значения сохраняются.
+  async function handleSave(draft: TaskDraft) {
+    const id = await onCreate(draft)
     navigate(`/tasks/${id}`)
   }
 

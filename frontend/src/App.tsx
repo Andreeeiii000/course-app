@@ -1,52 +1,98 @@
-import { useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from './app/AppLayout'
+import { RequireAuth } from './app/RequireAuth'
+import { useAuth } from './hooks/useAuth'
+import { useTasks } from './hooks/useTasks'
+import { AuthPage } from './pages/AuthPage'
 import { TasksPage } from './pages/TasksPage'
 import { TaskDetailsPage } from './pages/TaskDetailsPage'
 import { NewTaskPage } from './pages/NewTaskPage'
 import { EditTaskPage } from './pages/EditTaskPage'
 import { NotFoundPage } from './pages/NotFoundPage'
-import type { Task, TaskDraft } from './types/task'
-import { tasks as initialTasks } from './data/tasks'
+import type { TaskDraft } from './types/task'
+import { createTask, deleteTask, updateTask } from './services/tasks'
 import './App.css'
 
 export default function App() {
-  // Единственный источник данных. Демонстрационный массив используется
-  // только как начальное значение (копии объектов, исходник не мутируется).
-  const [tasks, setTasks] = useState<Task[]>(() =>
-    initialTasks.map((task) => ({ ...task }))
-  )
+  // Состояние авторизации создаётся один раз и передаётся вниз.
+  const auth = useAuth()
+  const userId = auth.status === 'authenticated' ? auth.session.user.id : null
 
-  function createTask(draft: TaskDraft): string {
-    const id = crypto.randomUUID() // один раз, до setTasks
-    setTasks((current) => [...current, { ...draft, id }])
-    return id
+  // Личные задачи живут в Supabase. До входа список пуст, при выходе и смене
+  // пользователя прежний список очищается до запроса нового. Демонстрационных
+  // записей ЛР 2 больше нет: они не смешиваются с настоящими.
+  const { state: tasksState, reload, refresh } = useTasks(userId)
+
+  // Создание: запись в БД, затем повторная загрузка списка и id новой строки.
+  // Ошибка записи уходит в форму; ошибка перезагрузки показывается в списке
+  // (refresh её не пробрасывает), чтобы не вызвать повторную отправку.
+  async function handleCreate(draft: TaskDraft): Promise<string> {
+    const created = await createTask(draft)
+    await refresh()
+    return created.id
   }
 
-  function updateTask(id: string, draft: TaskDraft): void {
-    setTasks((current) =>
-      current.map((task) => (task.id === id ? { ...draft, id: task.id } : task))
-    )
+  async function handleUpdate(id: string, draft: TaskDraft): Promise<void> {
+    await updateTask(id, draft)
+    await refresh()
   }
 
-  function deleteTask(id: string): void {
-    setTasks((current) => current.filter((task) => task.id !== id))
+  async function handleDelete(id: string): Promise<void> {
+    await deleteTask(id)
+    await refresh()
   }
 
   return (
     <Routes>
-      <Route element={<AppLayout />}>
+      <Route element={<AppLayout auth={auth} />}>
         <Route index element={<Navigate to="/tasks" replace />} />
-        <Route path="tasks" element={<TasksPage tasks={tasks} />} />
-        <Route path="tasks/new" element={<NewTaskPage onCreate={createTask} />} />
+
+        {/* Публичный маршрут. Вошедшего пользователя уводим к списку. */}
         <Route
-          path="tasks/:id"
-          element={<TaskDetailsPage tasks={tasks} onDelete={deleteTask} />}
+          path="auth"
+          element={
+            auth.status === 'authenticated' ? (
+              <Navigate to="/tasks" replace />
+            ) : auth.status === 'checking' ? (
+              <p role="status">Проверяем сессию…</p>
+            ) : (
+              <AuthPage />
+            )
+          }
         />
-        <Route
-          path="tasks/:id/edit"
-          element={<EditTaskPage tasks={tasks} onUpdate={updateTask} />}
-        />
+
+        {/* Личные страницы: без сессии недоступны. */}
+        <Route element={<RequireAuth auth={auth} />}>
+          <Route
+            path="tasks"
+            element={<TasksPage tasksState={tasksState} onRetry={reload} />}
+          />
+          <Route
+            path="tasks/new"
+            element={<NewTaskPage onCreate={handleCreate} />}
+          />
+          <Route
+            path="tasks/:id"
+            element={
+              <TaskDetailsPage
+                tasksState={tasksState}
+                onRetry={reload}
+                onDelete={handleDelete}
+              />
+            }
+          />
+          <Route
+            path="tasks/:id/edit"
+            element={
+              <EditTaskPage
+                tasksState={tasksState}
+                onRetry={reload}
+                onUpdate={handleUpdate}
+              />
+            }
+          />
+        </Route>
+
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

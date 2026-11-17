@@ -44,3 +44,12 @@ if (supabaseConfigError) {
   // Сообщение не содержит значений ключей.
   console.error(supabaseConfigError)
 }
+
+// Клиент для сервисов личных данных: вместо обращения к null бросает
+// понятную ошибку настройки, которая показывается в интерфейсе.
+export function requireSupabase(): SupabaseClient {
+  if (!supabase) {
+    throw new Error(supabaseConfigError ?? 'Supabase не настроен.')
+  }
+  return supabase
+}
