@@ -142,7 +142,7 @@ console.log(w.error?.code, w.error?.message, r.error?.code, r.error?.message)
 | Параметр | Значение |
 |---|---|
 | Вход по email и паролю | разрешён |
-| Подтверждение email | <включено |
+| Подтверждение email | включено |
 | Site URL | `http://localhost:5173` |
 | Redirect URLs (локально) | `http://localhost:5173` |
 
