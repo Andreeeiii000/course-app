@@ -213,4 +213,4 @@ console.log(sel.data, upd.data, upd.error, del.data, del.error, ins.error?.code,
 9. Регрессия: создание, редактирование, отмена, удаление с подтверждением, фильтр по статусу, выбор тега из справочника (читается и без входа), `/unknown`; демонстрационных задач ЛР 2 нет, список нового аккаунта пуст.
 10. Репозиторий: `git status` показывает миграцию, `hooks`, `services`, страницы, `README.md` и `docs/progress.md`, но не `.env.local`; в чистой копии `npm ci` и `npm run build` проходят после создания `.env.local`.
 
-Коммит: <хеш> Lab 6: add auth and persistent personal records
+Коммит: 27c6833 Lab 6: add auth and persistent personal records
